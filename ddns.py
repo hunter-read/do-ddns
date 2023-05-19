@@ -18,9 +18,12 @@ logger.setLevel(logging.INFO)
 def get_ip(server: str) -> str:
     if server is None:
         return None
-    response: requests.Response = requests.get(server)
-    if response.status_code == 200:
-        return response.text.strip()
+    try:
+        response: requests.Response = requests.get(server, timeout=30)
+        if response.status_code == 200:
+            return response.text.strip()
+    except requests.exceptions.RequestException:
+        pass
     logger.error("Unable to get IP from server: %s", server)
     return None
 
@@ -35,7 +38,6 @@ def get_ipv6() -> str:
 
 def get_subdomain_data(domain: str, subdomains: list, headers: dict) -> dict:
     result: dict = {}
-    logger.info(domain)
     for subdomain in subdomains:
         response: requests.Response = requests.get(
             f"https://api.digitalocean.com/v2/domains/{domain}/records?name={subdomain}",
@@ -51,7 +53,6 @@ def get_subdomain_data(domain: str, subdomains: list, headers: dict) -> dict:
                 elif record.get("type") == "AAAA":
                     aaaa_record = record
             result[subdomain] = (a_record, aaaa_record)
-            logger.info(json_data)
         else:
             result[subdomain] = None
     return result
@@ -59,9 +60,9 @@ def get_subdomain_data(domain: str, subdomains: list, headers: dict) -> dict:
 
 def update_record(
     domain: str, subdomain: str, old: dict, new: str, type: str, headers: dict
-) -> None:
+) -> bool:
     if new is None:
-        return
+        return False
 
     data: dict = {
         "name": subdomain.removesuffix(f".{domain}"),
@@ -78,8 +79,9 @@ def update_record(
         )
         if response.status_code == 201:
             logger.info("Successfully created %s: %s to %s", type, subdomain, new)
+            return True
         else:
-            logger.error("Unable to create %s: %s to %s", type, subdomain, new)
+            logger.error("Unable to create %s: %s to %s - %s", type, subdomain, new)
 
     elif old.get("data") != new:
         # Update the record
@@ -90,18 +92,13 @@ def update_record(
         )
         if response.status_code == 200:
             logger.info("Successfully updated %s: %s to %s", type, subdomain, new)
+            return True
         else:
-            logger.error(
-                "Unable to updated %s: %s to %s - %s",
-                type,
-                subdomain,
-                new,
-                response.text,
-            )
+            logger.error("Unable to update %s: %s to %s", type, subdomain, new)
+    return False
 
 
 def update_records() -> None:
-    logger.info("Updating records")
     ipv4: str = get_ipv4()
     ipv6: str = get_ipv6()
     if not (ipv4 or ipv6):
@@ -113,9 +110,9 @@ def update_records() -> None:
         logger.critical("API_KEY environment variable not set")
         return
     headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
-    logger.info(os.environ.get("DOMAINS"))
     domains: list = json.loads(os.environ.get("DOMAINS"))
-
+    updated = False
+    
     for domain_json in domains:
         domain: str = domain_json.get("domain")
         subdomains: list = domain_json.get("subdomains")
@@ -125,12 +122,13 @@ def update_records() -> None:
                 logger.info("Subdomain %s not found in current DNS data", subdomain)
                 continue
             old_ipv4, old_ipv6 = current_dns.get(subdomain)
-            update_record(domain, subdomain, old_ipv4, ipv4, "A", headers)
-            update_record(domain, subdomain, old_ipv6, ipv6, "AAAA", headers)
-
+            updated |= update_record(domain, subdomain, old_ipv4, ipv4, "A", headers)
+            updated |= update_record(domain, subdomain, old_ipv6, ipv6, "AAAA", headers)
+    if not updated:
+        logger.info("No records were updated")
 
 if __name__ == "__main__":
-    logger.info("Starting DDNS")
+    logger.info("Starting ddns")
     update_records()
     frequency: int = int(os.environ.get("FREQUENCY", 3600))
     schedule.every(frequency).seconds.do(update_records)
