@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  ddns:
+    image: hunterreadca/do-ddns
+    container_name: ddns
+    network_mode: bridge
+    restart: always
+    environment:
+      - API_KEY=
+      - DOMAINS=[{"domain":"example.tld","subdomains":["home.example.tld"]}]
+      # - IPV4_SERVER=https://ipv4.icanhazip.com 
+      # - IPV6_SERVER=https://ipv6.icanhazip.com # needs additional steps for ipv6 support in docker
+      # - FREQUENCY=3600
+      # - TTL=3600

@@ -68,7 +68,7 @@ def update_record(
         "name": subdomain.removesuffix(f".{domain}"),
         "data": new,
         "type": type,
-        "ttl": os.environ.get("TTL", 3600),
+        "ttl": int(os.environ.get("TTL", 3600)),
     }
     if old is None:
         #  Create the record
@@ -129,9 +129,9 @@ def update_records() -> None:
 
 if __name__ == "__main__":
     logger.info("Starting ddns")
-    update_records()
     frequency: int = int(os.environ.get("FREQUENCY", 3600))
     schedule.every(frequency).seconds.do(update_records)
+    update_records()
 
     while frequency > 0:
         schedule.run_pending()
