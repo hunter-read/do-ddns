@@ -2,8 +2,24 @@
 
 _DO-DDNS_ is a dynamic DNS helper for Digital Ocean users to utilize their DO account as a Dynamic DNS resolver.
 
+<p align="center">
+    <a href="https://www.digitalocean.com/?refcode=4afde7f13fdf&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge"><img src="https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%201.svg" alt="DigitalOcean Referral Badge" height="40" /></a>
+    <br>
+    <a href="https://www.python.org/downloads/release/python-380/" target="_blank">
+    <img src="https://img.shields.io/badge/python-v3.11%2B-blue" alt="python-version">
+    </a>
+    <a href="https://hub.docker.com/repository/docker/hunterreadca/do-ddns" target="_blank">
+    <img src="https://img.shields.io/docker/image-size/hunterreadca/do-ddns/latest" alt="docker">
+    </a>
+    <a href="https://github.com/hunter-read/lfg-notify-bot/blob/main/LICENSE" target="_blank">
+    <img src="https://img.shields.io/github/license/hunter-read/do-ddns" alt="license">
+    </a>
+</p>
+
+---
+
 ## Installation
-Can be run bare metal or in docker. Docker is preferred, and will automatically run
+Can be run bare metal or in docker. Docker is preferred, and will automatically run hourly unless configured otherwise.
 
 ### Docker
 1. Build the docker container with `docker build . -t ddns`
@@ -15,7 +31,7 @@ Alternatively use the docker image:
 `docker run --name ddns --rm --env-file=.env -d --restart=always hunterreadca/do-ddns`
 
 ### Bare Metal
-
+Set the env variable **FREQUENCY to zero** if using cron.
 1. Copy the ddns.py file to /usr/local/bin and make it executable.  
 `chmod +x ddns.py` 
 2. Run `pip3 install -r requirements.txt` to install all requirements.
