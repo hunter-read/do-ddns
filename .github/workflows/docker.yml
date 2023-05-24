@@ -1,6 +1,11 @@
-name: Continuous Integration
+name: Docker Image CI
 
-on: [push]
+on:
+  workflow_run:
+    workflows: ["Build and Test"]
+    branches: [main]
+    types: 
+      - completed
 
 jobs:
   docker:
