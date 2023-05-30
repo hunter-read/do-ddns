@@ -135,13 +135,6 @@ class TestDDNS(unittest.TestCase):
                 self.current_dns,
             )
 
-        # Test unsuccessful response
-        with patch.object(requests, "get") as mock_get:
-            mock_get.side_effect = requests.exceptions.RequestException
-            with self.assertRaises(Exception) as context:
-                get_subdomain_data(self.domain, self.subdomains, self.headers)
-            self.assertEqual(str(context.exception), "API Error")
-
     def test_update_record(self):
         # Test successful create
         with patch.object(requests, "post") as mock_post:

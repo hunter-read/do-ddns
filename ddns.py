@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import json
-import sys
 import logging
 import os
 import requests
@@ -17,6 +16,9 @@ logger.setLevel(logging.INFO)
 
 
 def get_ip(server: str | None) -> str | None:
+    """
+    Get the IP from the server, return None if unable to get IP.
+    """
     if server is None:
         return None
     try:
@@ -25,41 +27,50 @@ def get_ip(server: str | None) -> str | None:
             return response.text.strip()
     except requests.exceptions.RequestException:
         pass
-    logger.error("Unable to get IP from server: %s", server)
+    logger.warn("Unable to get IP from server: %s", server)
     return None
 
 
 def get_ipv4() -> str | None:
+    """
+    Get the IPv4 address from the server, return None if unable to get IP.
+    """
     return get_ip(os.environ.get("IPV4_SERVER", "https://ipv4.icanhazip.com"))
 
 
 def get_ipv6() -> str | None:
+    """
+    Get the IPv6 address from the server, return None if unable to get IP.
+    """
     return get_ip(os.environ.get("IPV6_SERVER", None))
 
 
 def get_subdomain_data(domain: str, subdomains: list, headers: dict) -> dict:
+    """
+    Get the current DNS records for the subdomains.
+
+    Return a dict of subdomain: (A, AAAA) tuples.
+    Throws an exception if unable to get data as this indicates an API error with DigitalOcean.
+    """
     result: dict = {}
     for subdomain in subdomains:
-        try:
-            response: requests.Response = requests.get(
-                f"https://api.digitalocean.com/v2/domains/{domain}/records?name={subdomain}",
-                headers=headers,
-            )
-            if response.status_code == 200:
-                json_data: dict = response.json().get("domain_records")
-                a_record: str | None = None
-                aaaa_record: str | None = None
-                for record in json_data:
-                    if record.get("type") == "A":
-                        a_record = record
-                    elif record.get("type") == "AAAA":
-                        aaaa_record = record
-                result[subdomain] = (a_record, aaaa_record)
-            else:
-                result[subdomain] = None
-        except requests.exceptions.RequestException:
-            logger.error("Unable to get subdomain data for %s", subdomain)
-            raise Exception("API Error")
+        response: requests.Response = requests.get(
+            f"https://api.digitalocean.com/v2/domains/{domain}/records?name={subdomain}",
+            headers=headers,
+        )
+        if response.status_code == 200:
+            json_data: dict = response.json().get("domain_records")
+            a_record: str | None = None
+            aaaa_record: str | None = None
+            for record in json_data:
+                if record.get("type") == "A":
+                    a_record = record
+                elif record.get("type") == "AAAA":
+                    aaaa_record = record
+            result[subdomain] = (a_record, aaaa_record)
+        else:
+            result[subdomain] = None
+
     return result
 
 
@@ -143,8 +154,9 @@ def update_records() -> None:
                 updated |= update_record(
                     domain, subdomain, old_ipv6, ipv6, "AAAA", headers
                 )
-        except Exception:
-            #  If we can't get the current DNS data, we can't update it. Indicates an issue with the API
+        except requests.exceptions.RequestException:
+            # Indicates an issue with the DigitalOcean API
+            logger.error("DigitalOcean API error")
             return
 
     if not updated:
