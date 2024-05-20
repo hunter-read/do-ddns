@@ -1,2 +1,2 @@
-requests==2.31.*
+requests==2.32.*
 schedule==1.2.*
